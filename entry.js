@@ -1,63 +1,73 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
+import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import fs from 'node:fs';
 
-console.log('🏁 Starting production server sequence...');
+console.log('🏁 [ENTRY] Starting production server sequence...');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const app = express();
 const port = process.env.PORT || 8080;
 
-let handler;
-const serverPath = path.join(__dirname, 'dist/server/server.js');
+// 1. CREATE BARE-METAL HTTP SERVER
+// We use node:http directly to ensure no dependencies can block the listener.
+const server = http.createServer();
 
-// 1. START LISTENING IMMEDIATELY
-// This ensures Cloud Run health checks pass quickly.
-app.listen(port, '0.0.0.0', () => {
+server.listen(port, '0.0.0.0', () => {
   console.log('--------------------------------------------------');
-  console.log(`🚀 TROPHIC NODE LISTENING ON PORT ${port}`);
+  console.log(`🚀 [ENTRY] SERVER LISTENING ON PORT ${port}`);
   console.log('--------------------------------------------------');
 });
 
 // 2. BACKGROUND INITIALIZATION
-// We load the heavy server bundle in the background.
+let handler;
+const serverPath = path.join(__dirname, 'dist/server/server.js');
+
 const initHandler = async () => {
   try {
-    console.log(`🔍 Checking server bundle at: ${serverPath}`);
+    console.log(`🔍 [ENTRY] Checking server bundle at: ${serverPath}`);
     if (!fs.existsSync(serverPath)) {
-      throw new Error('dist/server/server.js not found!');
+      throw new Error(`dist/server/server.js not found! Current dir: ${__dirname}`);
     }
-    const module = await import(serverPath);
+    
+    // On Windows absolute paths in import() need file://
+    const serverUrl = pathToFileURL(serverPath).href;
+    console.log(`📡 [ENTRY] Importing bundle from: ${serverUrl}`);
+    
+    const module = await import(serverUrl);
     handler = module.default;
-    console.log('✅ Server bundle loaded and ready.');
+    console.log('✅ [ENTRY] Server bundle loaded and ready.');
   } catch (error) {
-    console.error('❌ CRITICAL INITIALIZATION ERROR:', error);
+    console.error('❌ [ENTRY] CRITICAL INITIALIZATION ERROR:', error);
   }
 };
 
-const initializationPromise = initHandler();
+initHandler();
 
-// Serve static assets
-const clientPath = path.join(__dirname, 'dist/client');
-app.use(express.static(clientPath));
-
-// Request Handler
-app.all('*', async (req, res) => {
+// 3. REQUEST HANDLING LOGIC
+server.on('request', async (req, res) => {
   try {
-    // Wait for initialization if it hasn't finished yet
-    if (!handler) {
-      console.log('⏳ Handler not ready, waiting for initialization...');
-      await initializationPromise;
+    // Basic static file serving for /assets/
+    if (req.url.startsWith('/assets/')) {
+      const filePath = path.join(__dirname, 'dist/client', req.url);
+      if (fs.existsSync(filePath)) {
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
     }
 
+    // Wait for handler
     if (!handler) {
-      return res.status(503).send('Service Unavailable: Initialization Failed');
+      res.writeHead(503, { 'Content-Type': 'text/plain' });
+      res.end('Service Unavailable: Still Initializing...');
+      return;
     }
 
-    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    // Convert Node req to Web Request
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers.host || 'localhost';
+    const url = new URL(req.url, `${protocol}://${host}`);
+    
     const request = new Request(url.href, {
       method: req.method,
       headers: new Headers(req.headers),
@@ -68,10 +78,8 @@ app.all('*', async (req, res) => {
 
     const response = await handler.fetch(request);
     
-    res.status(response.status);
-    response.headers.forEach((value, key) => {
-      res.setHeader(key, value);
-    });
+    res.statusCode = response.status;
+    response.headers.forEach((v, k) => res.setHeader(k, v));
 
     if (response.body) {
       const reader = response.body.getReader();
@@ -85,17 +93,13 @@ app.all('*', async (req, res) => {
       res.end();
     }
   } catch (error) {
-    console.error('🔥 Request Handling Error:', error);
+    console.error('🔥 [ENTRY] Request Error:', error);
     if (!res.headersSent) {
-      res.status(500).send('Internal Server Error');
+      res.writeHead(500);
+      res.end('Internal Server Error');
     }
   }
 });
 
-process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('💥 Unhandled Rejection:', reason);
-});
+process.on('uncaughtException', (err) => console.error('💥 [ENTRY] Uncaught:', err));
+process.on('unhandledRejection', (reason) => console.error('💥 [ENTRY] Unhandled:', reason));

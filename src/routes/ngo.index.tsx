@@ -56,12 +56,10 @@ function NGOFeed() {
       const donorIds = Array.from(new Set(items.map((l) => l.donor_id)));
       if (donorIds.length) {
         const donorProfiles: Record<string, string> = {};
-        // Firestore 'in' query has a limit of 10/30 depending on version, 
-        // but for a small feed this is fine or we can fetch individually.
         for (const id of donorIds) {
-          const profDoc = await getDocs(query(collection(db, "profiles"), where("id", "==", id)));
-          if (!profDoc.empty) {
-            const data = profDoc.docs[0].data();
+          const profDoc = await getDoc(doc(db, "profiles", id));
+          if (profDoc.exists()) {
+            const data = profDoc.data();
             donorProfiles[id] = data.organization_name ?? "Unknown donor";
           }
         }
