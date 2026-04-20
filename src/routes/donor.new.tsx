@@ -5,7 +5,8 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, doc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
-import { scoreUrgency, type UrgencyResult } from "@/server/urgency.functions";
+import { scoreUrgency } from "@/server/urgency.functions";
+import type { UrgencyResult } from "@/server/urgency.functions";
 import { URGENCY_COLORS } from "@/lib/rescue-utils";
 import { toast } from "sonner";
 
