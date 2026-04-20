@@ -93,19 +93,50 @@ server.on('request', async (req, res) => {
 
     const response = await handler.fetch(request);
     
-    res.statusCode = response.status;
-    response.headers.forEach((v, k) => res.setHeader(k, v));
-
-    if (response.body) {
-      const reader = response.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        res.write(value);
+    // Handle the body and potentially inject environment variables
+    const isHtml = response.headers.get('content-type')?.includes('text/html');
+    
+    if (isHtml) {
+      let bodyString = await response.text();
+      
+      // Inject window.ENV script before </head> or <body>
+      const envData = {
+        VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY,
+        VITE_FIREBASE_AUTH_DOMAIN: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+        VITE_FIREBASE_PROJECT_ID: process.env.VITE_FIREBASE_PROJECT_ID,
+        VITE_FIREBASE_STORAGE_BUCKET: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+        VITE_FIREBASE_MESSAGING_SENDER_ID: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID,
+      };
+      
+      const script = `<script>window.ENV = ${JSON.stringify(envData)}</script>`;
+      
+      if (bodyString.includes('<head>')) {
+        bodyString = bodyString.replace('<head>', `<head>${script}`);
+      } else {
+        bodyString = script + bodyString;
       }
-      res.end();
+
+      res.statusCode = response.status;
+      response.headers.forEach((v, k) => {
+        if (k.toLowerCase() !== 'content-length') res.setHeader(k, v);
+      });
+      res.end(bodyString);
     } else {
-      res.end();
+      res.statusCode = response.status;
+      response.headers.forEach((v, k) => res.setHeader(k, v));
+      
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } else {
+        res.end();
+      }
     }
   } catch (error) {
     console.error('🔥 [ENTRY] Request Error:', error);
