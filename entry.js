@@ -10,7 +10,6 @@ const __dirname = path.dirname(__filename);
 const port = process.env.PORT || 8080;
 
 // 1. CREATE BARE-METAL HTTP SERVER
-// We use node:http directly to ensure no dependencies can block the listener.
 const server = http.createServer();
 
 server.listen(port, '0.0.0.0', () => {
@@ -25,12 +24,11 @@ const serverPath = path.join(__dirname, 'dist/server/server.js');
 
 const initHandler = async () => {
   try {
-    console.log(`🔍 [ENTRY] Checking server bundle at: ${serverPath}`);
+    console.log(`🔍 [ENTRY] Looking for server bundle at: ${serverPath}`);
     if (!fs.existsSync(serverPath)) {
       throw new Error(`dist/server/server.js not found! Current dir: ${__dirname}`);
     }
     
-    // On Windows absolute paths in import() need file://
     const serverUrl = pathToFileURL(serverPath).href;
     console.log(`📡 [ENTRY] Importing bundle from: ${serverUrl}`);
     
@@ -44,31 +42,48 @@ const initHandler = async () => {
 
 initHandler();
 
+// Helper to determine content type
+const getContentType = (ext) => {
+  const map = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+  };
+  return map[ext] || 'application/octet-stream';
+};
+
 // 3. REQUEST HANDLING LOGIC
 server.on('request', async (req, res) => {
   try {
-    // Basic static file serving for /assets/
-    if (req.url.startsWith('/assets/')) {
-      const filePath = path.join(__dirname, 'dist/client', req.url);
-      if (fs.existsSync(filePath)) {
-        fs.createReadStream(filePath).pipe(res);
-        return;
-      }
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    
+    // BROAD STATIC FILE SERVING FOR dist/client
+    const filePath = path.join(__dirname, 'dist/client', url.pathname);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      res.writeHead(200, { 'Content-Type': getContentType(path.extname(filePath)) });
+      fs.createReadStream(filePath).pipe(res);
+      return;
     }
 
     // Wait for handler
     if (!handler) {
       res.writeHead(503, { 'Content-Type': 'text/plain' });
-      res.end('Service Unavailable: Still Initializing...');
+      res.end('Service Unavailable: Nodes are still converging...');
       return;
     }
 
     // Convert Node req to Web Request
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.headers.host || 'localhost';
-    const url = new URL(req.url, `${protocol}://${host}`);
+    const webUrl = new URL(req.url, `${protocol}://${host}`);
     
-    const request = new Request(url.href, {
+    const request = new Request(webUrl.href, {
       method: req.method,
       headers: new Headers(req.headers),
       body: ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) ? req : undefined,
@@ -95,8 +110,16 @@ server.on('request', async (req, res) => {
   } catch (error) {
     console.error('🔥 [ENTRY] Request Error:', error);
     if (!res.headersSent) {
-      res.writeHead(500);
-      res.end('Internal Server Error');
+      res.writeHead(500, { 'Content-Type': 'text/html' });
+      res.end(`
+        <div style="font-family: monospace; padding: 20px; background: #0a0a0a; color: #ff5555; border: 1px solid #440000;">
+          <h2 style="color: #ffffff;">[ PRODUCTION CRASH ]</h2>
+          <p><strong>Error:</strong> ${error.message}</p>
+          <pre style="background: #1a1a1a; padding: 15px; border-left: 3px solid #ff5555;">${error.stack}</pre>
+          <hr style="border: 0; border-top: 1px solid #333; margin: 20px 0;">
+          <p style="color: #666; font-size: 12px;">Ensure all environment variables (VITE_FIREBASE_*) are set in the Cloud Run Console.</p>
+        </div>
+      `);
     }
   }
 });
