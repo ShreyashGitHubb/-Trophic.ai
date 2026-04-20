@@ -1,0 +1,188 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Trophic.ai — Bioluminescent Telemetry design system.
+ * Dark, soil-inspired palette with neon "fiber" accents (green/cyan/purple).
+ * All colors are oklch. Use semantic tokens via Tailwind utilities.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand-specific tokens */
+  --color-soil-950: var(--soil-950);
+  --color-soil-900: var(--soil-900);
+  --color-soil-800: var(--soil-800);
+  --color-soil-700: var(--soil-700);
+  --color-soil-600: var(--soil-600);
+  --color-bio-green: var(--bio-green);
+  --color-bio-cyan: var(--bio-cyan);
+  --color-bio-purple: var(--bio-purple);
+  --color-bio-coral: var(--bio-coral);
+  --color-bio-amber: var(--bio-amber);
+  --color-carbon: var(--carbon);
+
+  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Soil scale (deep dark greens) */
+  --soil-950: oklch(0.12 0.012 150);
+  --soil-900: oklch(0.16 0.014 150);
+  --soil-800: oklch(0.22 0.018 150);
+  --soil-700: oklch(0.30 0.022 150);
+  --soil-600: oklch(0.45 0.020 150);
+  --carbon: oklch(0.72 0.012 250);
+
+  /* Bioluminescent accents */
+  --bio-green: oklch(0.86 0.24 145);
+  --bio-cyan: oklch(0.86 0.16 210);
+  --bio-purple: oklch(0.74 0.27 320);
+  --bio-coral: oklch(0.72 0.20 25);
+  --bio-amber: oklch(0.82 0.18 75);
+
+  /* Semantic mapping (dark theme as default — this app is dark-first) */
+  --background: var(--soil-950);
+  --foreground: oklch(0.98 0.005 150);
+  --card: var(--soil-900);
+  --card-foreground: oklch(0.98 0.005 150);
+  --popover: var(--soil-900);
+  --popover-foreground: oklch(0.98 0.005 150);
+
+  --primary: var(--bio-green);
+  --primary-foreground: var(--soil-950);
+  --secondary: var(--soil-800);
+  --secondary-foreground: oklch(0.95 0.005 150);
+  --muted: var(--soil-800);
+  --muted-foreground: oklch(0.68 0.012 150);
+  --accent: var(--soil-800);
+  --accent-foreground: var(--bio-green);
+  --destructive: oklch(0.65 0.24 25);
+  --destructive-foreground: oklch(0.98 0.005 150);
+
+  --border: oklch(0.30 0.018 150);
+  --input: var(--soil-800);
+  --ring: var(--bio-green);
+
+  --chart-1: var(--bio-green);
+  --chart-2: var(--bio-cyan);
+  --chart-3: var(--bio-purple);
+  --chart-4: var(--bio-coral);
+  --chart-5: var(--bio-amber);
+
+  --sidebar: var(--soil-900);
+  --sidebar-foreground: oklch(0.95 0.005 150);
+  --sidebar-primary: var(--bio-green);
+  --sidebar-primary-foreground: var(--soil-950);
+  --sidebar-accent: var(--soil-800);
+  --sidebar-accent-foreground: var(--bio-green);
+  --sidebar-border: oklch(0.30 0.018 150);
+  --sidebar-ring: var(--bio-green);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-bio-green);
+    color: var(--color-soil-950);
+  }
+}
+
+@layer utilities {
+  .font-data { font-family: var(--font-data); }
+  .font-heading { font-family: var(--font-heading); }
+
+  .glow-green {
+    box-shadow: 0 0 12px -2px color-mix(in oklab, var(--color-bio-green) 60%, transparent);
+  }
+  .text-glow-green {
+    text-shadow: 0 0 12px color-mix(in oklab, var(--color-bio-green) 50%, transparent);
+  }
+
+  .telemetry-corners {
+    position: relative;
+  }
+  .telemetry-corners::before,
+  .telemetry-corners::after {
+    content: "";
+    position: absolute;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-color: var(--color-bio-green);
+  }
+  .telemetry-corners::before {
+    top: 0; left: 0;
+    border-top: 1px solid var(--color-bio-green);
+    border-left: 1px solid var(--color-bio-green);
+  }
+  .telemetry-corners::after {
+    bottom: 0; right: 0;
+    border-bottom: 1px solid var(--color-bio-green);
+    border-right: 1px solid var(--color-bio-green);
+  }
+
+  .ambient-glow {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%,
+        color-mix(in oklab, var(--color-bio-green) 18%, transparent) 0%,
+        transparent 70%);
+  }
+}
