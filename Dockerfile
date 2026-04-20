@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20 AS builder
+FROM node:22 AS builder
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # Runtime stage
-FROM node:20-slim
+FROM node:22-slim
 
 WORKDIR /app
 
@@ -24,7 +24,6 @@ COPY --from=builder /app/entry.js ./entry.js
 COPY --from=builder /app/package.json ./package.json
 
 # Copy node_modules to ensure all dependencies are present
-# We use node:20 in both stages so the binaries are compatible
 COPY --from=builder /app/node_modules ./node_modules
 
 # Cloud Run defaults to port 8080
