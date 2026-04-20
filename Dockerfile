@@ -11,8 +11,6 @@ RUN npm install
 COPY . .
 
 # Build the application
-# Explicitly set NITRO_PRESET to node-server or node_server
-ENV NITRO_PRESET=node-server
 RUN npm run build
 
 # Runtime stage
@@ -20,13 +18,19 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Copy built app and production dependencies
-COPY --from=builder /app/.output ./.output
+# Copy built app and entry point
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/entry.js ./entry.js
 COPY --from=builder /app/package.json ./package.json
+
+# Copy node_modules to ensure all dependencies are present
+# We use node:20 in both stages so the binaries are compatible
+COPY --from=builder /app/node_modules ./node_modules
 
 # Cloud Run defaults to port 8080
 ENV PORT=8080
+ENV NODE_ENV=production
 EXPOSE 8080
 
-# Start the server
-CMD ["node", ".output/server/index.mjs"]
+# Start the server using our production wrapper
+CMD ["node", "entry.js"]
